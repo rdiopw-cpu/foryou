@@ -1,40 +1,121 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Interactive Tarot Reader</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
-
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
-body{background:#0a0014;color:#eee;font-family:'Roboto',sans-serif;display:flex;flex-direction:column;align-items:center;padding:18px;min-height:100vh;}
-h1{font-family:'Playfair Display',serif;color:#e0b843;margin-bottom:18px;}
-button{padding:12px 26px;background:#3d0067;color:#e0b843;border:none;border-radius:8px;cursor:pointer;font-size:1rem;margin-bottom:18px;}
+body{
+  background:#0a0014;
+  color:#eee;
+  font-family:'Roboto',sans-serif;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:18px;
+  min-height:100vh;
+}
+h1{
+  font-family:'Playfair Display',serif;
+  color:#e0b843;
+  margin-bottom:18px;
+}
+button{
+  padding:12px 26px;
+  background:#3d0067;
+  color:#e0b843;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  font-size:1rem;
+  margin-bottom:18px;
+}
 button:hover{background:#58008f;}
-#tarotGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:18px;max-width:700px;width:100%;}
-.card{background:#1b001f;border-radius:8px;display:flex;flex-direction:column;align-items:center;padding:10px;transition:0.3s;box-shadow:0 0 8px #7200a8;}
-.card img{width:100%;border-radius:6px;}
-.card .name{margin-top:6px;font-size:0.85rem;text-align:center;color:#f3d876;}
+#tarotGrid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+  gap:18px;
+  max-width:700px;
+  width:100%;
+}
+.card{
+  background:#1b001f;
+  border-radius:8px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:10px;
+  transition:0.3s;
+  box-shadow:0 0 8px #7200a8;
+}
+.card img{
+  width:100%;
+  border-radius:6px;
+}
+.card .name{
+  margin-top:6px;
+  font-size:0.85rem;
+  text-align:center;
+  color:#f3d876;
+}
+@media(max-width:768px){
+  #tarotGrid{grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:15px;}
+}
+@media(max-width:480px){
+  #tarotGrid{grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:10px;}
+}
 </style>
 </head>
 <body>
-
 <h1>Interactive Tarot Reader</h1>
-<button id="shuffleBtn">Shuffle &amp; Draw</button>
+<button id="shuffleBtn">Shuffle & Draw</button>
 <div id="tarotGrid"></div>
-
 <audio id="shuffleSound" src="https://freesound.org/data/previews/337/337049_3237725-lq.mp3"></audio>
 
 <script>
 const shuffleBtn = document.getElementById('shuffleBtn');
 const tarotGrid = document.getElementById('tarotGrid');
 const shuffleSound = document.getElementById('shuffleSound');
+let deck = [];
 
-// Ambil seluruh deck dari Mystical API
+// Ambil deck Tarot 78 kartu dari Mystical API
 async function fetchDeck(){
   const res = await fetch('https://api.mysticalapi.com/v1/tarot/cards');
   const data = await res.json();
+  deck = data.cards; // [{name, image_url}, ...]
+}
+fetchDeck();
+
+shuffleBtn.addEventListener('click', async ()=>{
+  shuffleSound.currentTime = 0;
+  shuffleSound.play();
+  tarotGrid.innerHTML = '';
+  
+  // Pilih 8 kartu acak
+  const shuffled = [...deck].sort(()=>Math.random()-0.5).slice(0,8);
+  
+  shuffled.forEach(card=>{
+    const div = document.createElement('div');
+    div.className = 'card';
+    
+    const img = document.createElement('img');
+    img.src = card.image_url;
+    img.alt = card.name;
+    
+    const nameDiv = document.createElement('div');
+    nameDiv.className = 'name';
+    nameDiv.textContent = card.name;
+    
+    div.appendChild(img);
+    div.appendChild(nameDiv);
+    tarotGrid.appendChild(div);
+  });
+});
+</script>
+</body>
+</html>  const data = await res.json();
   return data.cards;  // format: [{ id, name, image_url, ... }, ...]
 }
 
