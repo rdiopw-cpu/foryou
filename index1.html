@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interactive Tarot Reader</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* RESET */
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { 
+    font-family: 'Roboto', sans-serif; 
+    background: linear-gradient(135deg, #1a001a, #000000); 
+    color: #eee; 
+    min-height: 100vh; 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: flex-start;
+    padding: 20px;
+  }
+  h1 { font-family:'Playfair Display', serif; font-weight:700; margin-bottom:20px; color:#f0c75e; text-align:center; }
+  button {
+    background: #4b0082; 
+    color:#f0c75e; 
+    font-size: 1rem; 
+    border:none; 
+    padding: 12px 24px; 
+    border-radius: 8px; 
+    cursor:pointer; 
+    transition: 0.3s;
+    margin-bottom:20px;
+  }
+  button:hover { background:#6a1b9a; }
+
+  /* TAROT GRID */
+  .tarot-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 120px);
+    grid-template-rows: repeat(3, 180px);
+    gap: 20px;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .card-container {
+    perspective: 1000px;
+    width: 120px;
+    height: 180px;
+    position: relative;
+  }
+
+  .card {
+    width: 100%;
+    height: 100%;
+    border-radius: 12px;
+    background: #2a002a;
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:0.7rem;
+    text-align:center;
+    cursor:pointer;
+    transform-style: preserve-3d;
+    transition: transform 0.8s ease, box-shadow 0.3s ease;
+    box-shadow: 0 0 10px rgba(255,215,0,0.2);
+  }
+
+  .card img {
+    width: 100%;
+    height: 100%;
+    border-radius:12px;
+    backface-visibility: hidden;
+    object-fit: cover;
+  }
+
+  .card .back {
+    background:#2a002a url('https://i.imgur.com/7o1ZtT3.png') center/cover no-repeat;
+    transform: rotateY(180deg);
+  }
+
+  .card.flipped { transform: rotateY(180deg); box-shadow: 0 0 20px #f0c75e; }
+
+  .label { font-size:0.7rem; margin-top:5px; text-align:center; }
+
+  @media(max-width:768px){
+    .tarot-grid { grid-template-columns: repeat(2, 100px); grid-template-rows: repeat(4, 150px); gap: 15px;}
+    .card-container { width:100px; height:150px;}
+  }
+
+  @media(max-width:480px){
+    .tarot-grid { grid-template-columns: repeat(2, 80px); grid-template-rows: repeat(4, 120px); gap:10px;}
+    .card-container { width:80px; height:120px;}
+    .label { font-size:0.6rem;}
+  }
+</style>
+</head>
+<body>
+
+<h1>Interactive Tarot Reader</h1>
+<button id="shuffleBtn">Shuffle & Draw</button>
+<div class="tarot-grid" id="tarotGrid">
+  <!-- 8 Cards -->
+  <div class="card-container"><div class="card"><div class="back"></div></div><div class="label">I am this now</div></div>
+  <div class="card-container"><div class="card"><div class="back"></div></div><div class="label">This is what bug me</div></div>
+  <div class="card-container"><div class="card"><div class="back"></div></div><div class="label">What I like about myself</div></div>
+  <div class="card-container"><div class="card"><div class="back"></div></div><div class="label">What I don’t like about myself</div></div>
+  <div class="card-container"><div class="card"><div class="back"></div></div><div class="label">My talent</div></div>
+  <div class="card-container"><div class="card"><div class="back"></div></div><div class="label">My temptation</div></div>
+  <div class="card-container"><div class="card"><div class="back"></div></div><div class="label">My personal quest</div></div>
+  <div class="card-container"><div class="card"><div class="back"></div></div><div class="label">My current guardian angel</div></div>
+</div>
+
+<!-- Sound Effects -->
+<audio id="shuffleSound" src="https://freesound.org/data/previews/337/337049_3237725-lq.mp3"></audio>
+<audio id="drawSound" src="https://freesound.org/data/previews/173/173145_2398404-lq.mp3"></audio>
+
+<script>
+const tarotDeck = [
+  // Sample Major Arcana
+  {name:"The Fool", img:"https://i.imgur.com/oJm6sZt.jpg"},
+  {name:"The Magician", img:"https://i.imgur.com/J1D4v5F.jpg"},
+  {name:"The High Priestess", img:"https://i.imgur.com/7X6V0wU.jpg"},
+  // ... add remaining 19 Major Arcana + 56 Minor Arcana (use placeholder images)
+];
+
+// Simple way to fill deck with placeholders
+for(let i=1;i<=78;i++){
+  if(!tarotDeck[i-1]) tarotDeck[i-1] = {name:`Card ${i}`, img:`https://picsum.photos/120/180?random=${i}`};
+}
+
+const shuffleBtn = document.getElementById('shuffleBtn');
+const tarotGrid = document.getElementById('tarotGrid');
+const shuffleSound = document.getElementById('shuffleSound');
+const drawSound = document.getElementById('drawSound');
+
+function shuffleArray(arr) {
+  return arr.sort(() => Math.random() - 0.5);
+}
+
+shuffleBtn.addEventListener('click', async ()=>{
+  shuffleSound.currentTime = 0; shuffleSound.play();
+  const cards = Array.from(tarotGrid.querySelectorAll('.card'));
+  cards.forEach(c=>c.classList.remove('flipped'));
+
+  // small delay for shuffle animation effect
+  await new Promise(r=>setTimeout(r, 600));
+
+  const selected = shuffleArray([...tarotDeck]).slice(0,8);
+  selected.forEach((cardData,i)=>{
+    const card = cards[i];
+    const orientation = Math.random() > 0.5 ? 0 : 180;
+    const img = document.createElement('img');
+    img.src = cardData.img;
+    img.style.transform = `rotate(${orientation}deg)`;
+    img.alt = cardData.name;
+
+    // Clear previous
+    card.innerHTML = '';
+    card.appendChild(img);
+
+    // flip animation
+    setTimeout(()=>{
+      card.classList.add('flipped');
+      drawSound.currentTime = 0; drawSound.play();
+    }, 200*i);
+  });
+});
+</script>
+
+</body>
+</html>
