@@ -1,39 +1,476 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Interactive Tarot Reader</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
-<style>
-*{margin:0;padding:0;box-sizing:border-box;}
-body{
-  background:#0a0014;
-  color:#eee;
-  font-family:'Roboto',sans-serif;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  padding:18px;
-  min-height:100vh;
-}
-h1{
-  font-family:'Playfair Display',serif;
-  color:#e0b843;
-  margin-bottom:18px;
-}
-button{
-  padding:12px 26px;
-  background:#3d0067;
-  color:#e0b843;
-  border:none;
-  border-radius:8px;
-  cursor:pointer;
-  font-size:1rem;
-  margin-bottom:18px;
-}
-button:hover{background:#58008f;}
-#tarotGrid{
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mystic Tarot Reading</title>
+    <style>
+        :root {
+            --bg-color: #0d0d12;
+            --surface: #1a1a24;
+            --accent: #d4af37; /* Gold */
+            --text: #f0f0f0;
+            --card-w: 60px;
+            --card-h: 90px;
+        }
+
+        @media (min-width: 600px) {
+            :root { --card-w: 80px; --card-h: 120px; }
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            color: var(--text);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Layout Utama */
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Mode Landscape */
+        @media (orientation: landscape) {
+            .app-container { flex-direction: row; }
+        }
+
+        /* Area Layout Reading */
+        .reading-area {
+            flex: 1.5;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .spread-grid {
+            display: grid;
+            grid-template-columns: repeat(4, var(--card-w));
+            grid-template-rows: repeat(3, var(--card-h));
+            gap: 15px;
+            position: relative;
+        }
+
+        .slot {
+            width: var(--card-w);
+            height: var(--card-h);
+            border: 2px dashed rgba(212, 175, 55, 0.3);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            color: rgba(255,255,255,0.2);
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        /* Mapping Posisi CSS Grid */
+        .slot-3 { grid-column: 1 / 3; grid-row: 1; justify-self: center; } 
+        .slot-1 { grid-column: 1; grid-row: 2; } 
+        .slot-2 { grid-column: 2; grid-row: 2; } 
+        .slot-4 { grid-column: 1 / 3; grid-row: 3; justify-self: center; } 
+        .slot-5 { grid-column: 3; grid-row: 2; } 
+        .slot-8 { grid-column: 4; grid-row: 1; } 
+        .slot-7 { grid-column: 4; grid-row: 2; } 
+        .slot-6 { grid-column: 4; grid-row: 3; } 
+
+        /* Area Deck di bawah/samping */
+        .deck-area {
+            flex: 1;
+            background: var(--surface);
+            border-top: 2px solid #333;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        @media (orientation: landscape) {
+            .deck-area { border-top: none; border-left: 2px solid #333; }
+        }
+
+        /* Styling Kartu */
+        .card {
+            width: var(--card-w);
+            height: var(--card-h);
+            perspective: 1000px;
+            position: absolute;
+            cursor: pointer;
+            border-radius: 6px;
+        }
+
+        .card-inner {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+            transform-style: preserve-3d;
+            border-radius: 6px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+        }
+
+        .card.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        /* Rotasi horizontal untuk kartu 1 & 2 */
+        .card.rotate-90 .card-inner {
+            transform: rotate(90deg) rotateY(180deg) scale(0.85);
+        }
+
+        .card-front, .card-back {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            backface-visibility: hidden;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #2a2a35;
+        }
+
+        .card-back {
+            background: linear-gradient(135deg, #1a1a24 25%, transparent 25%) -10px 0,
+                        linear-gradient(225deg, #1a1a24 25%, transparent 25%) -10px 0,
+                        linear-gradient(315deg, #1a1a24 25%, transparent 25%),
+                        linear-gradient(45deg, #1a1a24 25%, transparent 25%);
+            background-size: 20px 20px;
+            background-color: var(--accent);
+            border: 2px solid var(--accent);
+        }
+
+        .card-front {
+            transform: rotateY(180deg);
+            display: flex;
+            flex-direction: column;
+            background: #000;
+            border: 1px solid var(--accent);
+        }
+
+        .card-front img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .card-name-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            color: var(--accent);
+            font-size: 0.6rem;
+            text-align: center;
+            padding: 4px 2px;
+            white-space: pre-wrap;
+            z-index: 10;
+        }
+
+        /* UI Overlays */
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .btn {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
+            margin-top: 20px;
+        }
+
+        .btn:active { transform: scale(0.95); }
+
+        .status-text {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: var(--accent);
+            font-weight: bold;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+            z-index: 100;
+            text-align: center;
+            width: 100%;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            z-index: 100;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="reading-area">
+        <div class="status-text" id="statusMsg">Pilih 8 kartu dari deck</div>
+        <div class="spread-grid">
+            <div class="slot slot-3">3</div>
+            <div class="slot slot-1">1</div>
+            <div class="slot slot-2">2</div>
+            <div class="slot slot-5">5</div>
+            <div class="slot slot-8">8</div>
+            <div class="slot slot-7">7</div>
+            <div class="slot slot-4">4</div>
+            <div class="slot slot-6">6</div>
+        </div>
+    </div>
+
+    <div class="deck-area" id="deckArea"></div>
+</div>
+
+<div id="controls">
+    <button class="btn" onclick="resetApp()" style="padding: 8px 16px; font-size: 0.9rem;">Reset</button>
+</div>
+
+<div class="overlay" id="introOverlay">
+    <h1 style="color: var(--accent); margin-bottom: 10px; text-align:center;">Mystic Tarot</h1>
+    <p style="text-align: center; max-width: 80%; line-height: 1.5;">
+        Akan dilakukan penarikan 8 kartu.<br>
+        Fokus pada niat Anda, lalu sentuh tombol untuk mengacak kartu.
+    </p>
+    <button class="btn" onclick="startShuffle()">Shuffle Deck</button>
+</div>
+
+<script>
+    // Link server yang sudah dipastikan jalan dan berisi gambar .jpg
+    const BASE_IMG_URL = "https://ishtarcollective.blob.core.windows.net/rider-waite-tarot/";
+    let fullDeck = [];
+    let drawCount = 0;
+    let audioCtx = null;
+
+    // 1. GENERASI DECK
+    function generateDeck() {
+        fullDeck = [];
+        const majors = [
+            "The Fool", "The Magician", "The High Priestess", "The Empress", "The Emperor",
+            "The Hierophant", "The Lovers", "The Chariot", "Strength", "The Hermit",
+            "Wheel of Fortune", "Justice", "The Hanged Man", "Death", "Temperance",
+            "The Devil", "The Tower", "The Star", "The Moon", "The Sun", "Judgement", "The World"
+        ];
+        const suits = [
+            { id: 'wands', name: 'Wands' },
+            { id: 'cups', name: 'Cups' },
+            { id: 'swords', name: 'Swords' },
+            { id: 'pentacles', name: 'Pentacles' }
+        ];
+        const ranks = ['Ace','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Page','Knight','Queen','King'];
+
+        // Major Arcana format: major-0.jpg
+        majors.forEach((name, i) => {
+            fullDeck.push({ id: `major-${i}`, name: name, img: `major-${i}.jpg` });
+        });
+
+        // Minor Arcana format: wands-1.jpg
+        suits.forEach(suit => {
+            ranks.forEach((rank, i) => {
+                let r = i + 1;
+                fullDeck.push({ id: `${suit.id}-${r}`, name: `${rank} of ${suit.name}`, img: `${suit.id}-${r}.jpg` });
+            });
+        });
+    }
+
+    // 2. AUDIO SFX
+    function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+    }
+    
+    function playCardSound() {
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+    }
+
+    // 3. SHUFFLE
+    function startShuffle() {
+        initAudio();
+        document.getElementById('introOverlay').style.display = 'none';
+        
+        // Fisher-Yates Shuffle
+        for (let i = fullDeck.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [fullDeck[i], fullDeck[j]] = [fullDeck[j], fullDeck[i]];
+        }
+
+        const deckArea = document.getElementById('deckArea');
+        deckArea.innerHTML = '';
+        
+        const areaW = deckArea.clientWidth;
+        const areaH = deckArea.clientHeight;
+        const cardW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--card-w'));
+        const cardH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--card-h'));
+
+        fullDeck.forEach((cardInfo, index) => {
+            const cardEl = document.createElement('div');
+            cardEl.className = 'card';
+            cardEl.innerHTML = `
+                <div class="card-inner">
+                    <div class="card-front">
+                        <img src="${BASE_IMG_URL}${cardInfo.img}" alt="${cardInfo.name}" onerror="this.src='https://via.placeholder.com/60x90/000/d4af37?text=Tarot';">
+                        <div class="card-name-bar"></div>
+                    </div>
+                    <div class="card-back"></div>
+                </div>
+            `;
+            
+            const randomX = Math.random() * (areaW - cardW);
+            const randomY = Math.random() * (areaH - cardH);
+            const randomRot = Math.random() * 360;
+
+            cardEl.style.left = `${randomX}px`;
+            cardEl.style.top = `${randomY}px`;
+            
+            cardEl.style.transform = `translate(${areaW/2 - randomX}px, ${areaH/2 - randomY}px) rotate(0deg)`;
+            
+            setTimeout(() => {
+                cardEl.style.transition = 'transform 0.5s ease-out';
+                cardEl.style.transform = `rotate(${randomRot}deg)`;
+            }, 50 + (index * 10));
+
+            cardEl.addEventListener('click', () => handleCardClick(cardEl, cardInfo));
+            deckArea.appendChild(cardEl);
+        });
+
+        document.getElementById('statusMsg').innerText = `Pilih kartu 1 (Tersisa 8)`;
+    }
+
+    // 4. ANIMASI PINDAH
+    function handleCardClick(cardEl, cardInfo) {
+        if (drawCount >= 8 || cardEl.classList.contains('drawn')) return;
+        
+        cardEl.classList.add('drawn');
+        drawCount++;
+        playCardSound();
+
+        const isReversed = Math.random() > 0.5;
+        let displayName = cardInfo.name;
+        if (isReversed) {
+            displayName += "\n(Reversed)";
+            const imgEl = cardEl.querySelector('.card-front img');
+            imgEl.style.transform = 'rotate(180deg)';
+        }
+        cardEl.querySelector('.card-name-bar').innerText = displayName;
+
+        const targetSlot = document.querySelector(`.slot-${drawCount}`);
+        const cardRect = cardEl.getBoundingClientRect();
+        const slotRect = targetSlot.getBoundingClientRect();
+
+        cardEl.style.position = 'fixed';
+        cardEl.style.left = cardRect.left + 'px';
+        cardEl.style.top = cardRect.top + 'px';
+        cardEl.style.zIndex = 1000;
+        document.body.appendChild(cardEl);
+
+        void cardEl.offsetWidth;
+
+        cardEl.style.transition = 'all 0.7s cubic-bezier(0.25, 1, 0.5, 1)';
+        cardEl.style.left = slotRect.left + 'px';
+        cardEl.style.top = slotRect.top + 'px';
+        cardEl.style.transform = 'rotate(0deg)';
+        
+        setTimeout(() => {
+            cardEl.classList.add('flipped');
+            if (drawCount === 1 || drawCount === 2) {
+                cardEl.classList.add('rotate-90');
+            }
+        }, 200);
+
+        setTimeout(() => {
+            cardEl.style.position = 'absolute';
+            cardEl.style.left = '0';
+            cardEl.style.top = '0';
+            cardEl.style.transition = 'none';
+            cardEl.style.zIndex = '1';
+            targetSlot.innerHTML = '';
+            targetSlot.appendChild(cardEl);
+
+            if (drawCount < 8) {
+                document.getElementById('statusMsg').innerText = `Pilih kartu ${drawCount + 1} (Tersisa ${8 - drawCount})`;
+            } else {
+                document.getElementById('statusMsg').innerText = "Reading Complete";
+                document.getElementById('controls').style.display = 'block';
+                document.getElementById('deckArea').style.opacity = '0.3';
+                document.getElementById('deckArea').style.pointerEvents = 'none';
+            }
+        }, 750);
+    }
+
+    // 5. RESET
+    function resetApp() {
+        drawCount = 0;
+        document.getElementById('controls').style.display = 'none';
+        document.getElementById('deckArea').style.opacity = '1';
+        document.getElementById('deckArea').style.pointerEvents = 'auto';
+        
+        const spreadGrid = document.querySelector('.spread-grid');
+        spreadGrid.innerHTML = `
+            <div class="slot slot-3">3</div>
+            <div class="slot slot-1">1</div>
+            <div class="slot slot-2">2</div>
+            <div class="slot slot-5">5</div>
+            <div class="slot slot-8">8</div>
+            <div class="slot slot-7">7</div>
+            <div class="slot slot-4">4</div>
+            <div class="slot slot-6">6</div>
+        `;
+        
+        startShuffle();
+    }
+
+    window.onload = generateDeck;
+</script>
+
+</body>
+</html>
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
   gap:18px;
