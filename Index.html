@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tarot Insight - 8 Cards</title>
+    <style>
+        :root {
+            --bg-color: #0f0c29;
+            --card-width: 80px;
+            --card-height: 140px;
+            --accent: #f39c12;
+            --text: #ecf0f1;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: linear-gradient(to bottom, #0f0c29, #302b63, #24243e);
+            color: var(--text);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+            touch-action: manipulation;
+        }
+
+        h1 { margin: 20px 0 10px; font-weight: 300; letter-spacing: 2px; font-size: 1.5rem; text-transform: uppercase; }
+
+        /* Status & UI Controls */
+        #status-bar { margin-bottom: 15px; font-style: italic; color: var(--accent); }
+        .controls { margin-bottom: 20px; z-index: 100; }
+        button {
+            background: transparent;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 8px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        button:hover { background: var(--accent); color: #000; }
+
+        /* Deck Area */
+        .deck-container {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            display: flex;
+            justify-content: center;
+            perspective: 1000px;
+            margin-bottom: 40px;
+        }
+
+        .deck-card {
+            position: absolute;
+            width: var(--card-width);
+            height: var(--card-height);
+            background: #2c3e50;
+            border-radius: 8px;
+            border: 2px solid #fff;
+            background-image: url('https://upload.wikimedia.org/wikipedia/commons/5/54/Tarot_Back.png');
+            background-size: cover;
+            cursor: pointer;
+            transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.3s;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+        }
+
+        .deck-card:hover { transform: translateY(-10px) scale(1.05); box-shadow: 0 10px 20px rgba(243, 156, 18, 0.4); }
+
+        /* Layout Final */
+        .layout-grid {
+            display: none; /* Muncul setelah 8 kartu dipilih */
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            height: 600px;
+            margin: 20px auto;
+        }
+
+        .slot {
+            position: absolute;
+            width: var(--card-width);
+            height: var(--card-height);
+            transition: all 0.8s ease-in-out;
+        }
+
+        /* Mapping Posisi sesuai instruksi */
+        /* Center Cross */
+        .slot-1 { left: 30%; top: 35%; transform: translateX(-50%); } 
+        .slot-2 { left: 30%; top: 35%; transform: translateX(-50%) rotate(90deg); z-index: 10; }
+        .slot-3 { left: 30%; top: 5%; transform: translateX(-50%); }
+        .slot-4 { left: 30%; top: 65%; transform: translateX(-50%); }
+        .slot-5 { left: 60%; top: 35%; transform: translateX(-50%); }
+        /* Right Column */
+        .slot-7 { left: 85%; top: 35%; transform: translateX(-50%); }
+        .slot-6 { left: 85%; top: 65%; transform: translateX(-50%); }
+        .slot-8 { left: 85%; top: 5%; transform: translateX(-50%); }
+
+        /* Card Visuals */
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            transition: transform 0.8s;
+        }
+
+        .card-inner.flipped { transform: rotateY(180deg); }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #fff;
+        }
+
+        .card-back { background-image: url('https://upload.wikimedia.org/wikipedia/commons/5/54/Tarot_Back.png'); background-size: cover; }
+        .card-front { transform: rotateY(180deg); background-color: #fff; display: flex; flex-direction: column; }
+        
+        .card-img { width: 100%; height: 85%; object-fit: cover; }
+        .card-name { 
+            font-size: 8px; color: #000; text-align: center; 
+            padding: 2px; background: #fff; flex-grow: 1;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; line-height: 1;
+        }
+
+        .reversed { transform: rotate(180deg); }
+
+        @media (max-width: 400px) {
+            :root { --card-width: 65px; --card-height: 110px; }
+            .layout-grid { height: 500px; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Tarot Reader</h1>
+    <div id="status-bar">Pilih 8 kartu dari dek...</div>
+
+    <div class="controls">
+        <button onclick="resetGame()">Reset & Shuffle</button>
+    </div>
+
+    <div id="deck" class="deck-container"></div>
+    <div id="layout" class="layout-grid"></div>
+
+    <audio id="card-flip-sound" src="https://www.soundjay.com/misc/sounds/page-flip-01a.mp3" preload="auto"></audio>
+
+    <script>
+        const cardsData = [
+            { name: "The Fool", img: "m00.jpg" }, { name: "The Magician", img: "m01.jpg" }, { name: "The High Priestess", img: "m02.jpg" },
+            { name: "The Empress", img: "m03.jpg" }, { name: "The Emperor", img: "m04.jpg" }, { name: "The Hierophant", img: "m05.jpg" },
+            { name: "The Lovers", img: "m06.jpg" }, { name: "The Chariot", img: "m07.jpg" }, { name: "Strength", img: "m08.jpg" },
+            { name: "The Hermit", img: "m09.jpg" }, { name: "Wheel of Fortune", img: "m10.jpg" }, { name: "Justice", img: "m11.jpg" },
+            { name: "The Hanged Man", img: "m12.jpg" }, { name: "Death", img: "m13.jpg" }, { name: "Temperance", img: "m14.jpg" },
+            { name: "The Devil", img: "m15.jpg" }, { name: "The Tower", img: "m16.jpg" }, { name: "The Star", img: "m17.jpg" },
+            { name: "The Moon", img: "m18.jpg" }, { name: "The Sun", img: "m19.jpg" }, { name: "Judgement", img: "m20.jpg" },
+            { name: "The World", img: "m21.jpg" }
+        ];
+
+        // Tambahkan Minor Arcana secara dinamis
+        const suits = ['Wands', 'Cups', 'Swords', 'Pentacles'];
+        const suitCodes = ['w', 'c', 's', 'p'];
+        const values = ['01','02','03','04','05','06','07','08','09','10','11','12','13','14'];
+        const names = ['Ace', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Page', 'Knight', 'Queen', 'King'];
+
+        suits.forEach((suit, sIdx) => {
+            values.forEach((val, vIdx) => {
+                cardsData.push({
+                    name: `${names[vIdx]} of ${suit}`,
+                    img: `${suitCodes[sIdx]}${val}.jpg`
+                });
+            });
+        });
+
+        const API_BASE = "https://www.sacred-texts.com/tarot/pkt/img/";
+        let selectedCount = 0;
+        const maxSelection = 8;
+        let isShuffling = false;
+
+        function shuffle(array) {
+            return array.sort(() => Math.random() - 0.5);
+        }
+
+        function playSound() {
+            const sound = document.getElementById('card-flip-sound');
+            sound.currentTime = 0;
+            sound.play().catch(() => {}); // Prevent error if browser blocks auto-audio
+        }
+
+        function createDeck() {
+            const deckDiv = document.getElementById('deck');
+            const layoutDiv = document.getElementById('layout');
+            deckDiv.innerHTML = '';
+            layoutDiv.innerHTML = '';
+            layoutDiv.style.display = 'none';
+            selectedCount = 0;
+            document.getElementById('status-bar').innerText = "Pilih 8 kartu dari dek...";
+
+            const currentDeck = shuffle([...cardsData]);
+            
+            // Tampilkan 20 kartu visual saja sebagai representasi deck
+            for (let i = 0; i < 20; i++) {
+                const cardEl = document.createElement('div');
+                cardEl.className = 'deck-card';
+                cardEl.style.left = `calc(50% - 40px + ${i * 0.5}px)`;
+                cardEl.style.top = `${i * 0.5}px`;
+                cardEl.style.zIndex = i;
+                
+                cardEl.onclick = function() {
+                    if (selectedCount < maxSelection) {
+                        selectCard(currentDeck.pop());
+                        this.style.opacity = '0';
+                        this.style.pointerEvents = 'none';
+                    }
+                };
+                deckDiv.appendChild(cardEl);
+            }
+        }
+
+        function selectCard(cardInfo) {
+            selectedCount++;
+            playSound();
+            
+            const layoutDiv = document.getElementById('layout');
+            layoutDiv.style.display = 'block';
+
+            const isReversed = Math.random() > 0.7; // 30% chance reversed
+            const slot = document.createElement('div');
+            slot.className = `slot slot-${selectedCount}`;
+            
+            const nameDisplay = cardInfo.name + (isReversed ? " (Reversed)" : "");
+            const imgUrl = API_BASE + cardInfo.img;
+
+            slot.innerHTML = `
+                <div class="card-inner" id="card-${selectedCount}">
+                    <div class="card-face card-back"></div>
+                    <div class="card-face card-front">
+                        <img src="${imgUrl}" class="card-img ${isReversed ? 'reversed' : ''}" alt="${cardInfo.name}">
+                        <div class="card-name">${cardInfo.name}</div>
+                    </div>
+                </div>
+            `;
+
+            layoutDiv.appendChild(slot);
+
+            // Trigger Animation
+            setTimeout(() => {
+                document.getElementById(`card-${selectedCount}`).classList.add('flipped');
+            }, 100);
+
+            if (selectedCount === maxSelection) {
+                document.getElementById('status-bar').innerText = "Selesai. Inilah ramalan Anda.";
+                document.getElementById('deck').style.visibility = 'hidden';
+            } else {
+                document.getElementById('status-bar').innerText = `Kartu ${selectedCount} terpilih. Pilih lagi...`;
+            }
+        }
+
+        function resetGame() {
+            document.getElementById('deck').style.visibility = 'visible';
+            createDeck();
+        }
+
+        // Init
+        window.onload = createDeck;
+    </script>
+</body>
+</html>
